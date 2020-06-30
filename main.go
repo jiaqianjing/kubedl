@@ -67,6 +67,11 @@ func main() {
 
 	ctrl.SetLogger(zap.Logger(true))
 
+	// 1. init Manager (kubebuilder 最外层组件，负责初始化 controller, cache, client)
+	// Manager 会创建:
+	// 		1. Cache, 用作 client 的读请求，以及生成 informer
+	//		2. 创建读请求的 client (apiReader), 请求走 Cache
+	//		3. 写请求的 client (writeObj), 请求走 APIServer
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: ctrlMetricsAddr,
@@ -88,6 +93,7 @@ func main() {
 	registry.RegisterGangSchedulers(mgr)
 
 	// Setup all controllers with provided manager.
+	// 2. 设置所有自定义的 workload 的 controllers
 	if err = controllers.SetupWithManager(mgr, options.CtrlConfig); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KubeDL")
 		os.Exit(1)
@@ -108,6 +114,7 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
+	// 3. start manager
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)

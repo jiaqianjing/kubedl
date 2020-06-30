@@ -8,6 +8,7 @@ metadata:
   creationTimestamp: null
   name: pytorchjobs.kubeflow.org
 spec:
+  # 定义 kubectl get 显示那些字段
   additionalPrinterColumns:
   - JSONPath: .status.conditions[-1:].type
     name: State
@@ -15,9 +16,11 @@ spec:
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
+  # 新增字段，相较于 pytorch-operator
   - JSONPath: .spec.ttlSecondsAfterFinished
     name: Finished-TTL
     type: integer
+  # 新增字段，相较于 pytorch-operator
   - JSONPath: .spec.activeDeadlineSeconds
     name: Max-Lifetime
     type: integer
@@ -28,8 +31,10 @@ spec:
     plural: pytorchjobs
     singular: pytorchjob
   scope: Namespaced
+  # kubectl scale 相关，不配置，无法使用 kubectl scale 实现扩缩容，这里不需要配置
   subresources:
     status: {}
+  # 校验器，crd 创建好，通过改 crd 创建资源，如果存在无效字段，请求将被拒绝
   validation:
     openAPIV3Schema:
       description: Represents a PyTorchJob resource.
@@ -51,12 +56,14 @@ spec:
           description: Specification of the desired state of the PyTorchJob.
           properties:
             activeDeadlineSeconds:
+              # 从作业 startTime 开始，到系统尝试终止作业之前，作业处于 active 的时间
               description: Specifies the duration in seconds relative to the startTime
                 that the job may be active before the system tries to terminate it;
                 value must be positive integer.
               format: int64
               type: integer
             backoffLimit:
+              # 重试多少次后，作业变成 failed
               description: Optional number of retries before marking this job failed.
               format: int32
               type: integer
@@ -78,6 +85,7 @@ spec:
                   type: integer
               type: object
             ttlSecondsAfterFinished:
+              # 作业结束后，清理作业的 TTL
               description: TTLSecondsAfterFinished is the TTL to clean up jobs. It
                 may take extra ReconcilePeriod seconds for the cleanup, since reconcile
                 gets called periodically. Default to infinite.

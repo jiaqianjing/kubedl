@@ -23,6 +23,7 @@ var (
 	discoveryClient discovery.DiscoveryInterface
 )
 
+// 通过环境变量 WORKLOADS_ENABLE 判断是否开启哪些 operator, install 其 CRDs
 func IsWorkloadEnable(workload runtime.Object, scheme *runtime.Scheme) (kind string, enabled bool) {
 	gvk, err := apiutil.GVKForObject(workload, scheme)
 	if err != nil {
