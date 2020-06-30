@@ -125,6 +125,10 @@ func (jc *JobController) GenOwnerReference(obj metav1.Object) *metav1.OwnerRefer
 	return controllerRef
 }
 
+//	{
+//		"group-name": "",
+//		"job-name": ""
+//	}
 func (jc *JobController) GenLabels(jobName string) map[string]string {
 	labelGroupName := apiv1.GroupNameLabel
 	labelJobName := apiv1.JobNameLabel
@@ -137,6 +141,7 @@ func (jc *JobController) GenLabels(jobName string) map[string]string {
 
 // CrateGang create a new gang schedule process, ensure the relationship between job, managed objects and
 // gang entity always maintained, so the consistency of gang scheduling never breaks.
+// CrateGang 创建了一个新的组调度进程，保证了作业、被管理对象和组实体之间的关系始终保持不变，使组调度的一致性永不中断。
 func (jc *JobController) CreateGang(job metav1.Object, replicas map[apiv1.ReplicaType]*apiv1.ReplicaSpec) (runtime.Object, error) {
 	gangEntity, err := jc.GangScheduler.GetGang(types.NamespacedName{
 		Namespace: job.GetNamespace(),
@@ -145,6 +150,7 @@ func (jc *JobController) CreateGang(job metav1.Object, replicas map[apiv1.Replic
 	if err != nil {
 		// Gang entity not found, create a new one.
 		if k8serrors.IsNotFound(err) {
+			// 创建 PodGroup, minMember 为 pytorchjob/tfjob 的所有 replica 的副本数， 保证他们所有的 pod 作为 kube-batch 的 job 统一调度
 			gangEntity, err = jc.GangScheduler.CreateGang(job, replicas)
 			if err != nil {
 				log.Errorf("failed to create gang schedule entity, gang scheduler: %s, err: %v", jc.GangScheduler.Name(), err)
@@ -174,6 +180,7 @@ func (jc *JobController) DeleteGang(job metav1.Object) error {
 // resolveControllerRef returns the job referenced by a ControllerRef,
 // or nil if the ControllerRef could not be resolved to a matching job
 // of the correct Kind.
+// resolveControllerRef 返回 ControllerRef 引用的 job，如果 ControllerRef 无法解析为正确类型的匹配作业，则返回 nil。
 func (jc *JobController) resolveControllerRef(namespace string, controllerRef *metav1.OwnerReference) metav1.Object {
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.

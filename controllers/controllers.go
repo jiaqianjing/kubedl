@@ -26,9 +26,12 @@ import (
 )
 
 // SetupWithManagerFunc is a list of functions to setup all controllers to the manager.
+// 将所有自定义的 workload 的 controller 塞到 manager 的 map 里， key 是定义 GVK 的对象（如 pytorchjob）
+// value 是对应 GVK 的 reconciler.SetupWithManager(). (在 import package controllers 时通过 add.*.go 文件中的 init 函数完成注册)
 var SetupWithManagerMap = make(map[runtime.Object]func(mgr controllerruntime.Manager, config job_controller.JobControllerConfiguration) error)
 
 // SetupWithManager setups all controllers to the manager.
+// 完成所有 controller 的 reconciler 的注册
 func SetupWithManager(mgr controllerruntime.Manager, config job_controller.JobControllerConfiguration) error {
 	for workload, f := range SetupWithManagerMap {
 		kind, enabled := workloadgate.IsWorkloadEnable(workload, mgr.GetScheme())

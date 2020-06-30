@@ -31,6 +31,7 @@ import (
 )
 
 // updateGeneralJobStatus updates the status of job with given replica specs and job status.
+// JobRunning/JobSucceeded 看 master, JobFailed 有一个副本的 pod 有失败，并且没有在重试，即为失败
 func (r *PytorchJobReconciler) updateGeneralJobStatus(pytorchJob *pytorchv1.PyTorchJob,
 	replicaSpecs map[v1.ReplicaType]*v1.ReplicaSpec, jobStatus *v1.JobStatus, restart bool) error {
 	log.Info("Updating status", "PytorchJob name", pytorchJob.Name, "restart", restart)

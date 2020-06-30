@@ -75,6 +75,7 @@ func (kbs *kubeBatchScheduler) CreateGang(job metav1.Object, replicas map[apiv1.
 	kind := accessor.GetKind()
 
 	// Inject binding relationship into pod group by append owner reference.
+	// 关联 podGroup 和 Job
 	gang_schedule.AppendOwnerReference(podGroup, metav1.OwnerReference{
 		APIVersion:         apiVersion,
 		Kind:               kind,

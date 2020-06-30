@@ -86,6 +86,7 @@ type PytorchJobReconciler struct {
 func (r *PytorchJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	// Fetch latest pytorch job instance.
 	sharedPytorchJob := &pytorchv1.PyTorchJob{}
+	// 根据 resource(pytorchjob) 的 name 和 namespace, 从 k8s 集群中取回 pytorchjob object
 	err := r.Get(context.Background(), req.NamespacedName, sharedPytorchJob)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -99,8 +100,11 @@ func (r *PytorchJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return reconcile.Result{}, err
 	}
 
+	// 复制一份 pytorchjob object 数据
 	pytorchJob := sharedPytorchJob.DeepCopy()
 	// Check reconcile is required.
+	// 检查 PyTorchReplicaSpecs 的 replicas 数目和实际是否相等
+	// 除了参数这个函数与 kubeflow/operator 一致
 	needSync := r.ctrl.SatisfyExpectations(pytorchJob, pytorchJob.Spec.PyTorchReplicaSpecs)
 	// No need to do reconcile or job has been deleted.
 	if !needSync || pytorchJob.DeletionTimestamp != nil {
@@ -109,6 +113,7 @@ func (r *PytorchJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return reconcile.Result{}, nil
 	}
 	// Set default properties for pytorch job.
+	// 给副本数，重启策略，端口号等赋默认值，具体默认值见 kubedl/api/pytorch/v1/defaults.go
 	r.scheme.Default(pytorchJob)
 
 	result, err := r.ctrl.ReconcileJobs(pytorchJob, pytorchJob.Spec.PyTorchReplicaSpecs, pytorchJob.Status, &pytorchJob.Spec.RunPolicy)
@@ -120,6 +125,7 @@ func (r *PytorchJobReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 }
 
 func (r *PytorchJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// 向 manager 注册一个新的 controller, manager 会确保在 controller 启动前，共享缓存的数据已经同步
 	c, err := controller.New(r.ControllerName(), mgr, controller.Options{
 		Reconciler:              r,
 		MaxConcurrentReconciles: options.CtrlConfig.MaxConcurrentReconciles,

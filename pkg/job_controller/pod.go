@@ -50,6 +50,7 @@ const (
 )
 
 // When a pod is created, enqueue the job that manages it and update its expectations.
+// 当 pod 被创建时，将管理它对应的 job, 并更新 expectations
 func (jc *JobController) OnPodCreateFunc(e event.CreateEvent) bool {
 	pod := e.Meta.(*v1.Pod)
 	if pod.DeletionTimestamp != nil {
@@ -187,6 +188,7 @@ func (jc *JobController) FilterPodsForReplicaType(pods []*v1.Pod, replicaType st
 
 // getPodSlices returns a slice, which element is the slice of pod.
 func (jc *JobController) GetPodSlices(pods []*v1.Pod, replicas int, logger *log.Entry) [][]*v1.Pod {
+	// 初始化一个长度为 replica 的 二维切片
 	podSlices := make([][]*v1.Pod, replicas)
 	for _, pod := range pods {
 		if _, ok := pod.Labels[apiv1.ReplicaIndexLabel]; !ok {
@@ -237,9 +239,10 @@ func (jc *JobController) ReconcilePods(
 	}
 	numReplicas := int(*spec.Replicas)
 	var masterRole bool
-
+	//初始化 jobStatus.ReplicaStatuses 变量 --> { "master": { "Active": , "Succeeded": , "Failed": }, "worker": {...}}
 	initializeReplicaStatuses(jobStatus, rtype)
 
+	// 返回二维数组 [[replica-index=0 的 pods][replica-index=1 的 pods]...]
 	podSlices := jc.GetPodSlices(pods, numReplicas, logger)
 	for index, podSlice := range podSlices {
 		if len(podSlice) > 1 {
@@ -293,6 +296,7 @@ func (jc *JobController) ReconcilePods(
 				}
 			}
 			// Check if the pod is retryable.
+			// 这里是看的是 replica 的 RestartPolicy， pod 的 RestartPolicy 没有 ExitCode
 			if spec.RestartPolicy == apiv1.RestartPolicyExitCode {
 				if pod.Status.Phase == v1.PodFailed && trainutil.IsRetryableExitCode(exitCode) {
 					logger.Infof("Need to restart the pod: %v.%v", pod.Namespace, pod.Name)
@@ -327,6 +331,7 @@ func (jc *JobController) createNewPod(job interface{}, rt, index string, spec *a
 		return err
 	}
 	expectationPodsKey := GenExpectationPodsKey(jobKey, rt)
+	// 初始化：ControlleeExpectations{ add=1, del=0, key=expectationPodsKey, timestamp}
 	err = jc.Expectations.ExpectCreations(expectationPodsKey, 1)
 	if err != nil {
 		return err
@@ -366,6 +371,7 @@ func (jc *JobController) createNewPod(job interface{}, rt, index string, spec *a
 		logger.Warning(errMsg)
 		jc.Recorder.Event(runtimeObject, v1.EventTypeWarning, podTemplateRestartPolicyReason, errMsg)
 	}
+	// 设置 pod 的 restartPolicy, 该方法将 ExitCode 等同于 Never，其他如 replica 中设置的策略
 	setRestartPolicy(podTemplate, spec)
 
 	// If gang-scheduling is enabled, try re-bind this pod with gang entity to maintain the gang relationship,

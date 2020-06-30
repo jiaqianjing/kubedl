@@ -69,9 +69,10 @@ func main() {
 
 	// 1. init Manager (kubebuilder 最外层组件，负责初始化 controller, cache, client)
 	// Manager 会创建:
-	// 		1. Cache, 用作 client 的读请求，以及生成 informer
-	//		2. 创建读请求的 client (apiReader), 请求走 Cache
+	// 		1. Cache, 用作 client 的读请求，以及生成监测对应 GVK（比如: pytorchjob） 的 informer
+	//		2. 读请求的 client (apiReader), 请求走 Cache
 	//		3. 写请求的 client (writeObj), 请求走 APIServer
+	//      4. recorderProvider, 记录 event 事件用的，kubectl describe 可用到
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: ctrlMetricsAddr,
@@ -84,6 +85,7 @@ func main() {
 	}
 
 	setupLog.Info("setting up scheme")
+	// 2. 添加每个 workload 的 scheme 信息 （type 和 GVK/GVR 是通过 scheme 进行序列和反序列化的）
 	if err := api.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "unable to add APIs to scheme")
 		os.Exit(1)
@@ -93,7 +95,7 @@ func main() {
 	registry.RegisterGangSchedulers(mgr)
 
 	// Setup all controllers with provided manager.
-	// 2. 设置所有自定义的 workload 的 controllers
+	// 3. 完成所有 workload 的 reconciler (如: PytorchJobReconciler) 的注册
 	if err = controllers.SetupWithManager(mgr, options.CtrlConfig); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KubeDL")
 		os.Exit(1)
@@ -114,7 +116,10 @@ func main() {
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")
-	// 3. start manager
+	// 4. 启动 manager:
+	//		1. 启动 Cache（创建 FIFO queue, 初始化 informer, reflector, LocalStorage cache, index）
+	//		2. 启动 controller 组件
+	// 跳转接口实现快捷键：cmd + alt + b
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
